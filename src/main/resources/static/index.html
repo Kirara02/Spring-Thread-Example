@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Employee Data</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        var socket = new SockJS("/ws");
+        var stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+          console.log("Connected: " + frame);
+
+          stompClient.subscribe("/topic/employees", function (message) {
+            var employees = JSON.parse(message.body);
+            var employeeList = document.getElementById("employee-list");
+            employeeList.innerHTML = "";
+            employees.forEach(function (employee) {
+              var listItem = document.createElement("li");
+              listItem.textContent = employee.name + " - " + employee.position + " - $" + employee.salary;
+              employeeList.appendChild(listItem);
+            });
+          });
+
+          // Send a message to request employee data
+          stompClient.send("/app/employees", {});
+        });
+
+        // Function to add employee
+        function addEmployee() {
+          var name = document.getElementById("name").value;
+          var position = document.getElementById("position").value;
+          var salary = parseFloat(document.getElementById("salary").value);
+
+          stompClient.send(
+            "/app/addEmployee",
+            {},
+            JSON.stringify({
+              name: name,
+              position: position,
+              salary: salary,
+            })
+          );
+        }
+
+        document.getElementById("addEmployeeBtn").addEventListener("click", addEmployee);
+
+        stompClient.onWebSocketError = function (error) {
+          console.error("WebSocket Error: " + error);
+        };
+
+        stompClient.onWebSocketClose = function (event) {
+          console.log("WebSocket connection closed: " + event.code + " - " + event.reason);
+        };
+      });
+    </script>
+  </head>
+  <body>
+    <h1>Employee Data</h1>
+    <ul id="employee-list"></ul>
+
+    <h2>Add Employee</h2>
+    <input type="text" id="name" placeholder="Name" />
+    <input type="text" id="position" placeholder="Position" />
+    <input type="number" id="salary" placeholder="Salary" step="0.01" />
+    <button id="addEmployeeBtn">Add Employee</button>
+  </body>
+</html>
